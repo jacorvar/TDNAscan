@@ -75,7 +75,7 @@ def captureTDNAname(tdna_seq):
     else:
         sys.exit("TDNA is not in fasta format.")
 
-def align2genome(R1,R2,genome,outfile,thread,directory):
+def align2genome(R1,R2,genome,index,outfile,thread,directory):
     #align2genome("informativeRead_1.fq","informativeRead_2.fq","mt4_chr1_2Mb.fa")
     #bwa mem -T 20 -t 8 mt4_chr1_2Mb.fa informativeRead_1.fq informativeRead_2.fq  >informativeMt4.sam
     # samtools view -@ 8 -buS -q 30 informativeMt4.sam |samtools sort -@ 8 - -O bam -o informativeMt4_sort.bam
@@ -91,7 +91,8 @@ def align2genome(R1,R2,genome,outfile,thread,directory):
     cmd3 = "samtools view -@  "+ str(thread) + " -buS " + outfile+".sam |samtools sort -m 100M -@ "+ str(thread) + " - -O bam -o "+outfile+"_sort.bam"
     cmd4 = "samtools index " + outfile+"_sort.bam"
     run(cmd0)
-    run(cmd1)
+    if index != true:
+        run(cmd1)
     run(cmd2)
     run(cmd3)
     run(cmd4)
@@ -561,6 +562,7 @@ if __name__ == '__main__':
     parser.add_argument('-2', action='store', dest='fq2', help="read 2 of paired end reads",required=True)
     parser.add_argument('-g', action='store', dest='reference', help="plant genome file",required=True)
     parser.add_argument('-t', action='store', dest='tdna_seq', help="t-DNA sequence file",required=True)
+    parser.add_argument('-i', action='store', default=False, type=bool, dest='index', help="Whether the bwa index is already computed",required=False)
     parser.add_argument('-p', action='store', dest='project', help="the project name",required=True)
     parser.add_argument('-n', action='store', default='3', type=int, dest='minRD', help="the minimal total number of informative reads (clipped and discordant reads [default:3]")
     parser.add_argument('-a', action='store', default='5', type=int, dest='winCLR', help="the window size of clustering soft clipped reads [default:3]")
@@ -573,6 +575,7 @@ if __name__ == '__main__':
     fq2 = args.fq2
     reference = args.reference
     tdna_seq = args.tdna_seq
+    bwa_index = args.index
     #tfile = args.tfile
     project = args.project
     minRD = args.minRD
@@ -603,7 +606,7 @@ if __name__ == '__main__':
     with open (tdna_seq, "w") as tdna_seq_fh:
         tdna_seq_fh.writelines(lines)
     # align all reads to T-DNA sequence
-    align2genome(fq1,fq2,tdna_seq,informativeTDNA,thread,directory)
+    align2genome(fq1,fq2,tdna_seq,False,informativeTDNA,thread,directory)
     ##########################Step 2: capture all informative reads from SAM file from Step1
     print("Running the step2: capture all informative reads from SAM file from Step1 ")
     tdnaSAM = directory+ "/1.TDNA.sam"
@@ -659,7 +662,7 @@ if __name__ == '__main__':
     # ##########################Step 3: map all informative reads to plant genome
     print("Running the step3: map all informative reads to plant genome ")
     informativeGenome = directory+ "/3."+project+"_informativeGenome"
-    align2genome(informative_genome_r1, informative_genome_r2, reference,informativeGenome,thread,directory)
+    align2genome(informative_genome_r1, informative_genome_r2, reference, bwa_index, informativeGenome,thread,directory)
     ##########################Step 4: output all candidate insertion location and report the detail information of truncated T-DNA including how many base pairs truncated at both side of TDNA and the insertion direction
     print("Running the step4:extract informative reads and cluster all informative reads based on location ")
     #clusterIR("informativeMt4.sam")
